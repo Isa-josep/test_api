@@ -2,10 +2,23 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcrypt');
+const Joi = require('joi');
+const jwt = require('jsonwebtoken');
+const secret = process.env.JWT_SECRET;
+
+// Esquema de validación para el usuario
+const userSchema = Joi.object({
+    nombre: Joi.string().min(3).required(),
+    apellido: Joi.string().min(3).required(),
+    nombre_usuario: Joi.string().min(3).required(),
+    correo: Joi.string().email().required(),
+    contrasena: Joi.string().min(6).required(),
+    rol: Joi.string().valid('usuario', 'entrenador', 'admin').default('usuario')
+});
 
 // Obtener todos los usuarios
 router.get('/', (req, res) => {
-    db.query('SELECT * FROM users', (err, results) => {
+    db.query('SELECT * FROM usuarios', (err, results) => {
         if (err) {
             return res.status(500).send(err);
         }
@@ -15,22 +28,27 @@ router.get('/', (req, res) => {
 
 // Crear un nuevo usuario
 router.post('/', (req, res) => {
-    const { name, lastname, username, email, password } = req.body;
-    const hashedPassword = bcrypt.hashSync(password, 10); // Hash de la contraseña
-    db.query('INSERT INTO users (name, lastname, username, email, password) VALUES (?, ?, ?, ?, ?)', 
-    [name, lastname, username, email, hashedPassword], 
+    const { error, value } = userSchema.validate(req.body);
+    if (error) {
+        return res.status(400).send(error.details[0].message);
+    }
+
+    const { nombre, apellido, nombre_usuario, correo, contrasena, rol } = value;
+    const hashedPassword = bcrypt.hashSync(contrasena, 10); // Hash de la contraseña
+    db.query('INSERT INTO usuarios (nombre, apellido, nombre_usuario, correo, contrasena, rol) VALUES (?, ?, ?, ?, ?, ?)', 
+    [nombre, apellido, nombre_usuario, correo, hashedPassword, rol], 
     (err, results) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json({ id: results.insertId, name, lastname, username, email });
+        res.json({ id: results.insertId, nombre, apellido, nombre_usuario, correo, rol });
     });
 });
 
 // Obtener un usuario por ID
 router.get('/:id', (req, res) => {
     const { id } = req.params;
-    db.query('SELECT * FROM users WHERE id = ?', [id], (err, results) => {
+    db.query('SELECT * FROM usuarios WHERE id = ?', [id], (err, results) => {
         if (err) {
             return res.status(500).send(err);
         }
@@ -41,56 +59,54 @@ router.get('/:id', (req, res) => {
 // Actualizar un usuario
 router.put('/:id', (req, res) => {
     const { id } = req.params;
-    const { name, lastname, username, email, password } = req.body;
-    const hashedPassword = bcrypt.hashSync(password, 10); // Hash de la contraseña
-    db.query('UPDATE users SET name = ?, lastname = ?, username = ?, email = ?, password = ? WHERE id = ?', 
-    [name, lastname, username, email, hashedPassword, id], 
+    const { error, value } = userSchema.validate(req.body);
+    if (error) {
+        return res.status(400).send(error.details[0].message);
+    }
+
+    const { nombre, apellido, nombre_usuario, correo, contrasena, rol } = value;
+    const hashedPassword = bcrypt.hashSync(contrasena, 10); // Hash de la contraseña
+    db.query('UPDATE usuarios SET nombre = ?, apellido = ?, nombre_usuario = ?, correo = ?, contrasena = ?, rol = ? WHERE id = ?', 
+    [nombre, apellido, nombre_usuario, correo, hashedPassword, rol, id], 
     (err, results) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json({ id, name, lastname, username, email });
+        res.json({ id, nombre, apellido, nombre_usuario, correo, rol });
     });
 });
 
 // Eliminar un usuario
 router.delete('/:id', (req, res) => {
     const { id } = req.params;
-    db.query('DELETE FROM users WHERE id = ?', [id], (err, results) => {
+    db.query('DELETE FROM usuarios WHERE id = ?', [id], (err, results) => {
         if (err) {
             return res.status(500).send(err);
         }
-        res.json({ message: 'User deleted' });
+        res.json({ message: 'Usuario eliminado' });
     });
 });
 
 // Iniciar sesión
-// Iniciar sesión
 router.post('/login', (req, res) => {
-    const { email, password } = req.body;
-    console.log(`Login attempt for email: ${email}`); // Log para depuración
-    db.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
+    const { correo, contrasena } = req.body;
+    db.query('SELECT * FROM usuarios WHERE correo = ?', [correo], (err, results) => {
         if (err) {
-            console.error('Error executing query:', err);
             return res.status(500).send(err);
         }
         if (results.length > 0) {
-            const user = results[0];
-            console.log(`User found: ${user.email}`); // Log para depuración
-            const passwordIsValid = bcrypt.compareSync(password, user.password);
+            const usuario = results[0];
+            const passwordIsValid = bcrypt.compareSync(contrasena, usuario.contrasena);
             if (passwordIsValid) {
-                console.log('Password is valid'); // Log para depuración
-                res.json({ message: 'Login successful', user });
+                const token = jwt.sign({ id: usuario.id, correo: usuario.correo }, secret, { expiresIn: '1h' });
+                res.json({ message: 'Inicio de sesión exitoso', token });
             } else {
-                console.log('Invalid password'); // Log para depuración
-                res.status(401).send({ message: 'Invalid password' });
+                res.status(401).send({ message: 'Contraseña incorrecta' });
             }
         } else {
-            console.log('User not found'); // Log para depuración
-            res.status(404).send({ message: 'User not found' });
+            res.status(404).send({ message: 'Usuario no encontrado' });
         }
     });
 });
-
 
 module.exports = router;
