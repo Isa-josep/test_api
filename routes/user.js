@@ -98,14 +98,46 @@ router.post('/login', (req, res) => {
             const usuario = results[0];
             const passwordIsValid = bcrypt.compareSync(contrasena, usuario.contrasena);
             if (passwordIsValid) {
-                const token = jwt.sign({ id: usuario.id, correo: usuario.correo }, secret, { expiresIn: '1h' });
-                res.json({ message: 'Inicio de sesión exitoso', token });
+                const token = jwt.sign({ id: usuario.id, correo: usuario.correo, rol: usuario.rol }, secret, { expiresIn: '1h' });
+                res.json({
+                    token,
+                    user: {
+                        nombre: usuario.nombre,
+                        apellido: usuario.apellido,
+                        nombre_usuario: usuario.nombre_usuario,
+                        correo: usuario.correo,
+                        rol: usuario.rol
+                    }
+                });
             } else {
                 res.status(401).send({ message: 'Contraseña incorrecta' });
             }
         } else {
             res.status(404).send({ message: 'Usuario no encontrado' });
         }
+    });
+});
+
+// Obtener usuarios que no están en ningún grupo
+router.get('/no-group', (req, res) => {
+    const query = `
+        SELECT u.*
+        FROM usuarios u
+        LEFT JOIN grupo_usuarios gu ON u.id = gu.usuario_id
+        WHERE gu.usuario_id IS NULL
+    `;
+    console.log('Executing query: ', query);
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error executing query: ', err);
+            return res.status(500).send(err);
+        }
+        console.log('Query results: ', results);
+        if (results.length === 0) {
+            console.log('No users found without a group');
+            return res.json([]);
+        }
+        res.json(results);
     });
 });
 

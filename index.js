@@ -1,16 +1,14 @@
 const express = require('express');
 const app = express();
-const port = 3000;
-
+const bodyParser = require('body-parser');
 const userRoutes = require('./routes/user');
-const errorMiddleware = require('./middleware/errorMiddleware');
+const groupRoutes = require('./routes/groups');
 
-app.use(express.json());
+app.use(bodyParser.json());
+
 app.use('/api/users', userRoutes);
+app.use('/api/groups', groupRoutes);
 
-// Middleware de manejo de errores
-app.use(errorMiddleware);
-
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+app.listen(3000, () => {
+    console.log('Server running on port 3000');
 });
