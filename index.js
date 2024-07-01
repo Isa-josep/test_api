@@ -1,14 +1,16 @@
 const express = require('express');
-const app = express();
 const bodyParser = require('body-parser');
-const userRoutes = require('./routes/user');
-const groupRoutes = require('./routes/groups');
+const cors = require('cors');
+const app = express();
+const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors());
 
-app.use('/api/users', userRoutes);
-app.use('/api/groups', groupRoutes);
+app.use('/api/users', require('./routes/user'));
+app.use('/api/groups', require('./routes/groups'));
 
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });

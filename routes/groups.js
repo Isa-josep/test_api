@@ -38,21 +38,7 @@ router.get('/', (req, res) => {
 });
 
 // Obtener usuarios que no están en ningún grupo
-router.get('/no-group', (req, res) => {
-    const query = `
-        SELECT u.* 
-        FROM usuarios u
-        LEFT JOIN grupo_usuarios gu ON u.id = gu.usuario_id
-        WHERE gu.usuario_id IS NULL
-    `;
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error executing query:', err);
-            return res.status(500).send(err);
-        }
-        res.json(results);
-    });
-});
+
 
 // Añadir un usuario a un grupo
 router.post('/:groupId/users', (req, res) => {

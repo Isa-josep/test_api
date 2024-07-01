@@ -20,9 +20,29 @@ const userSchema = Joi.object({
 router.get('/', (req, res) => {
     db.query('SELECT * FROM usuarios', (err, results) => {
         if (err) {
-            return res.status(500).send(err);
+            console.error('Error al obtener usuarios:', err);
+            return res.status(500).json({ error: err.message });
         }
         res.json(results);
+    });
+});
+
+// Obtener usuarios que no están en ningún grupo
+router.get('/no-group', (req, res) => {
+    const query = `
+        SELECT u.*
+        FROM usuarios u
+        LEFT JOIN grupo_usuarios gu ON u.id = gu.usuario_id
+        WHERE gu.usuario_id IS NULL
+    `;
+    console.log('Query ejecutada:', query);
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error al ejecutar la consulta:', err);
+            return res.status(500).json({ error: 'Error al ejecutar la consulta' });
+        }
+        console.log('Resultados obtenidos:', results);
+        res.json(results); // Envía los resultados al cliente
     });
 });
 
@@ -30,7 +50,8 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
     const { error, value } = userSchema.validate(req.body);
     if (error) {
-        return res.status(400).send(error.details[0].message);
+        console.error('Error de validación:', error);
+        return res.status(400).json({ error: error.details[0].message });
     }
 
     const { nombre, apellido, nombre_usuario, correo, contrasena, rol } = value;
@@ -39,7 +60,8 @@ router.post('/', (req, res) => {
     [nombre, apellido, nombre_usuario, correo, hashedPassword, rol], 
     (err, results) => {
         if (err) {
-            return res.status(500).send(err);
+            console.error('Error al crear usuario:', err);
+            return res.status(500).json({ error: err.message });
         }
         res.json({ id: results.insertId, nombre, apellido, nombre_usuario, correo, rol });
     });
@@ -50,7 +72,8 @@ router.get('/:id', (req, res) => {
     const { id } = req.params;
     db.query('SELECT * FROM usuarios WHERE id = ?', [id], (err, results) => {
         if (err) {
-            return res.status(500).send(err);
+            console.error('Error al obtener usuario:', err);
+            return res.status(500).json({ error: err.message });
         }
         res.json(results[0]);
     });
@@ -61,7 +84,8 @@ router.put('/:id', (req, res) => {
     const { id } = req.params;
     const { error, value } = userSchema.validate(req.body);
     if (error) {
-        return res.status(400).send(error.details[0].message);
+        console.error('Error de validación:', error);
+        return res.status(400).json({ error: error.details[0].message });
     }
 
     const { nombre, apellido, nombre_usuario, correo, contrasena, rol } = value;
@@ -70,7 +94,8 @@ router.put('/:id', (req, res) => {
     [nombre, apellido, nombre_usuario, correo, hashedPassword, rol, id], 
     (err, results) => {
         if (err) {
-            return res.status(500).send(err);
+            console.error('Error al actualizar usuario:', err);
+            return res.status(500).json({ error: err.message });
         }
         res.json({ id, nombre, apellido, nombre_usuario, correo, rol });
     });
@@ -81,7 +106,8 @@ router.delete('/:id', (req, res) => {
     const { id } = req.params;
     db.query('DELETE FROM usuarios WHERE id = ?', [id], (err, results) => {
         if (err) {
-            return res.status(500).send(err);
+            console.error('Error al eliminar usuario:', err);
+            return res.status(500).json({ error: err.message });
         }
         res.json({ message: 'Usuario eliminado' });
     });
@@ -92,7 +118,8 @@ router.post('/login', (req, res) => {
     const { correo, contrasena } = req.body;
     db.query('SELECT * FROM usuarios WHERE correo = ?', [correo], (err, results) => {
         if (err) {
-            return res.status(500).send(err);
+            console.error('Error al iniciar sesión:', err);
+            return res.status(500).json({ error: err.message });
         }
         if (results.length > 0) {
             const usuario = results[0];
@@ -110,35 +137,13 @@ router.post('/login', (req, res) => {
                     }
                 });
             } else {
-                res.status(401).send({ message: 'Contraseña incorrecta' });
+                res.status(401).json({ message: 'Contraseña incorrecta' });
             }
         } else {
-            res.status(404).send({ message: 'Usuario no encontrado' });
+            res.status(404).json({ message: 'Usuario no encontrado' });
         }
     });
 });
 
-// Obtener usuarios que no están en ningún grupo
-router.get('/no-group', (req, res) => {
-    const query = `
-        SELECT u.*
-        FROM usuarios u
-        LEFT JOIN grupo_usuarios gu ON u.id = gu.usuario_id
-        WHERE gu.usuario_id IS NULL
-    `;
-    console.log('Executing query: ', query);
-    db.query(query, (err, results) => {
-        if (err) {
-            console.error('Error executing query: ', err);
-            return res.status(500).send(err);
-        }
-        console.log('Query results: ', results);
-        if (results.length === 0) {
-            console.log('No users found without a group');
-            return res.json([]);
-        }
-        res.json(results);
-    });
-});
 
 module.exports = router;
