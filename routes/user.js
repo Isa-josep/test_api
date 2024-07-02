@@ -33,7 +33,7 @@ router.get('/no-group', (req, res) => {
         SELECT u.*
         FROM usuarios u
         LEFT JOIN grupo_usuarios gu ON u.id = gu.usuario_id
-        WHERE gu.usuario_id IS NULL
+        WHERE gu.grupo_id IS NULL AND u.rol = 'usuario'
     `;
     console.log('Query ejecutada:', query);
     db.query(query, (err, results) => {
