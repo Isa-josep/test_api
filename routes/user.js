@@ -144,6 +144,23 @@ router.post('/login', (req, res) => {
         }
     });
 });
+//actualizar rol de usuario
+router.put('/:id/rol', (req, res) => {
+    const { id } = req.params;
+    const { rol } = req.body;
+
+    if (!['usuario', 'entrenador', 'admin'].includes(rol)) {
+        return res.status(400).json({ message: 'Rol inválido' });
+    }
+
+    db.query('UPDATE usuarios SET rol = ? WHERE id = ?', [rol, id], (err, results) => {
+        if (err) {
+            console.error('Error al actualizar rol del usuario:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ message: 'Rol del usuario actualizado' });
+    });
+});
 
 
 module.exports = router;
