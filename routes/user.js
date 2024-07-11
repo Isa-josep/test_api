@@ -16,24 +16,13 @@ const userSchema = Joi.object({
     rol: Joi.string().valid('usuario', 'entrenador', 'admin').default('usuario')
 });
 
-// Obtener todos los usuarios
-router.get('/', (req, res) => {
-    db.query('SELECT * FROM usuarios', (err, results) => {
-        if (err) {
-            console.error('Error al obtener usuarios:', err);
-            return res.status(500).json({ error: err.message });
-        }
-        res.json(results);
-    });
-});
-
 // Obtener usuarios que no están en ningún grupo
 router.get('/no-group', (req, res) => {
     const query = `
         SELECT u.*
         FROM usuarios u
         LEFT JOIN grupo_usuarios gu ON u.id = gu.usuario_id
-        WHERE gu.grupo_id IS NULL AND u.rol = 'usuario'
+        WHERE gu.usuario_id IS NULL
     `;
     console.log('Query ejecutada:', query);
     db.query(query, (err, results) => {
@@ -43,6 +32,37 @@ router.get('/no-group', (req, res) => {
         }
         console.log('Resultados obtenidos:', results);
         res.json(results); // Envía los resultados al cliente
+    });
+});
+
+// Ruta para actualizar el nombre de un usuario por ID
+router.put('/:id/nombre', (req, res) => {
+  const userId = req.params.id;
+  const { nombre } = req.body;
+
+  if (!nombre) {
+    return res.status(400).json({ error: 'Nombre es requerido' });
+  }
+
+  db.query('UPDATE usuarios SET nombre = ? WHERE id = ?', [nombre, userId], (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json({ message: 'Nombre actualizado correctamente' });
+  });
+});
+
+// Obtener todos los usuarios
+router.get('/', (req, res) => {
+    db.query('SELECT * FROM usuarios', (err, results) => {
+        if (err) {
+            console.error('Error al obtener usuarios:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(results);
     });
 });
 
@@ -144,23 +164,5 @@ router.post('/login', (req, res) => {
         }
     });
 });
-//actualizar rol de usuario
-router.put('/:id/rol', (req, res) => {
-    const { id } = req.params;
-    const { rol } = req.body;
-
-    if (!['usuario', 'entrenador', 'admin'].includes(rol)) {
-        return res.status(400).json({ message: 'Rol inválido' });
-    }
-
-    db.query('UPDATE usuarios SET rol = ? WHERE id = ?', [rol, id], (err, results) => {
-        if (err) {
-            console.error('Error al actualizar rol del usuario:', err);
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ message: 'Rol del usuario actualizado' });
-    });
-});
-
 
 module.exports = router;
