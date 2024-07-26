@@ -10,7 +10,7 @@ app.use(cors());
 
 app.use('/api/users', require('./routes/user'));
 app.use('/api/groups', require('./routes/groups'));
-
+app.use('/api/routines', require('./routes/routines'));
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
